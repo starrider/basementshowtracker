@@ -12,7 +12,7 @@
         e.preventDefault();
         if(x < max_fields){ //max input box allowed
             x++; //text box increment
-            $(wrapper).append('<div><input class = "bandinp" type="text" name="mytext[]"/><a href="#" class="remove_field">Remove</a></div><br><br>'); //add input box
+            $(wrapper).append('<div> <div> <h4 class = formWord> BAND: </h4> <input class = "bandinp" type="text" name="bands[]"/></div> <div><h4 class = formWord> BANDCAMP: </h4><input class = "sitesinp" type="url" name="sites[]"/><input class = "check" type="checkbox" name="siteopt" value="bandcamp"> Bandcamp <input type="checkbox" name="siteopt" value="Soundcloud"> Soundcloud <h5></h5></div>  <a href="#" class="remove_field">x</a> <h5></h5> </div>'); //add input box
         }
     });
     
@@ -28,15 +28,18 @@
 
 
 	<?php
-	
+
+	require('simple_html_dom.php');
+
 	//on submit 
 	if(isset($_POST['submit'])){
-		echo $_POST["mytext"][0];
+	//	echo $_POST["bands"][0];
 		//error checking: make sure inputs are in xx form for date
 		$in_month;
 		$in_day;
 		$in_hour;
 		$in_min;
+
 		if(isset($_POST['form_month'])){
 			$in_month = $_POST['form_month'];
 		} else {
@@ -69,12 +72,23 @@
 		} else {
 			$error = "Input minute";
 		}
+
+
 		$count = 0;
-		if(isset($_POST["mytext"])){
-			$count = count($_POST["mytext"]);
+		if(isset($_POST["bandsinp"])){
+			$count = count($_POST["bandsinp"]);
 		} else {
 
 		}
+		$sitecount;
+		if(isset($_POST["sitesinp"])){
+			$sitecount = count($_POST["sitesinp"]);
+			echo $sitecount . "  sites";
+		} else {
+
+		}
+		
+		//error check for bandcamp site: make sure site is bandcamp 
 
 
 		//post creation 
@@ -86,7 +100,7 @@
 
 		$wp_error = true;
 		$postid = wp_insert_post($post, $wp_error);
-		echo $postid;
+	//	echo $postid;
 
 		if(is_wp_error($postid)){
 			$errors = $postid->get_error_messages();
@@ -107,8 +121,8 @@
 			'post_title' => $temp
 		);
 
-		echo $update['ID'];
-		echo $update['post_title'];
+	//	echo $update['ID'];
+	//	echo $update['post_title'];
 
 		$stot = 0;
 
@@ -116,10 +130,11 @@
 
 		if( isset($_POST['form_month']) && isset($_POST['form_day']) && isset($_POST['form_hour']) && isset($_POST['form_min'])){
 			$t = $_POST['form_month'] . "/" . $_POST['form_day'] . "/2017 " . $in_hour  . ":" . $_POST['form_min'] . ":00";
-			echo $t . "<br\>";
+			//echo $t . "<br\>";
 			$stot = strtotime($t);
-			echo $stot;
+		//	echo $stot;
 		}
+
 
 
 		//fields & post update
@@ -130,22 +145,54 @@
 		$i = 0;
 		echo "  " . $count . " count <h4><br><br><br><br></h4> ";
 		while($i < $count){
-			//add bands from mytext arr
-			echo $_POST["mytext"][$i] . "<h4><br><br><br></h4>";
+			//add bands from bands arr
+			echo $_POST["bandsinp"][$i] . "<h4><br><br><br></h4>";
 			
 			$row = array(
-				'field_595407b7c5447' => $_POST["mytext"][$i],
+				'field_595407b7c5447' => $_POST["bandsinp"][$i],
 				'field_59550ff469dd7' => $i
 			
 			);
 
-			echo $row['field_595407b7c5447'] . " added to row";
+			echo $row['field_595407b7c5447'] . " added to row ";
 			$a = add_row('field_59540768c5446', $row, $update['ID']);
 			echo $a . ": a <h4><br><br></h4>";
+
+
+			//getting embed data 
+		echo  $_POST["sitesinp"][$i] . " url <h3><br></h3>";
+		$site = $_POST["sitesinp"][$i];
+		trim($site);
+		$html = file_get_html($site);
+		$embedurl = $html->find("meta[property='og:video']",0)->content;
+		echo "embed url:" . $embedurl . "<br>";
+		$bandalbum = $html->find("meta[name='title']",0)->content;
+		echo $bandalbum . "<br>";
+		$href =  $html->find("a[class='thumbthumb']",0)->href;
+		echo $href . "<h3><br></h3>";
+		$url = $html->find("meta[property='og:url']",0)->content;
+		$url = $url . $href;
+		echo $url . "<h3><br></h3>";
+		$pos = strpos($embedurl, "album=", 0);
+		$albumid = substr($embedurl, $pos+6, 10);
+		echo " id " . $albumid;
+
+
+		$content = '<iframe style="border: 0; width: 200px; height: 200px;" src="https://bandcamp.com/EmbeddedPlayer/album='.$albumid . '/size=large/bgcol=ffffff/linkcol=0687f5/minimal=true/transparent=true/" seamless><a href="' . $url . '">' . $bandalbum .'</a></iframe>';
+		echo "<br>".$content;
+
+		$post = array(
+			'ID' => $update['ID'],
+			'post_content' => $content
+		);
+
+		wp_update_post($post);
+			
 			$i++;
 		}
 		
-
+		wp_set_post_tags($update['ID'], $_POST["bandsinp"], true);
+		wp_set_post_tags($update['ID'], $_POST["location"], true);
 
 		$didyou =	wp_update_post($update, true);
 		if(is_wp_error($didyou)){
@@ -169,6 +216,7 @@ get_header();
 <div class="respond">
 
   <form action="" method="post">
+  	<input type="hidden" name="redirect" value="/submission" />
 	   <h3 class = formWord >LOCATION:</h3>
 	   <input class = "locinp" type = "text" name = "location" required value="<?php if(isset($_POST['location'])){ echo $_POST['location'];}?>">
 	   	<h3 class = formWord> DATE: </h3>	
@@ -263,11 +311,12 @@ get_header();
 	 
 
 	  <div class="input_fields_wrap">
-    		<button class="add_field_button">Add Bands</button><br><br>
-    		<div><input class = "bandinp" type="text" name="mytext[]"></div><br><br>
+    		<button class="add_field_button">ADD BANDS</button><br><br>
+    		<div> 	<h4 class = formWord> BAND: </h4>	  <input class = "bandinp" type="text" name="bandsinp[]"></div> 
+    		<div> 	<h4 class = formWord> BAND SITE: </h4> <div class="tooltip">?<span class="tooltiptext">Not bandcamp or soundcloud? Just leave the empty value.</span></div> <p></p>	  <input class = "sitesinp" type="url" name="sitesinp[]" value = "Empty">  <input class = "check" type="radio" name="siteopt" value="bandcamp"> Bandcamp <input type="radio" class = "check" name="siteopt" value="Soundcloud"> Soundcloud<br><p></p></div>
 		</div>
 
-	  <input type="submit" name="submit" /> 
+	  <input class = "submit" type="submit" name="submit" /> 
  
   </form>
 </div>

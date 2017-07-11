@@ -87,8 +87,9 @@ if( $posts ): ?>
 										<?php while(have_rows('bands')): the_row(); ?>
 											<div class = "band-container">
 											<!-- <li class = "band"> -->
-												<p><?php the_sub_field('band'); ?></p>
+											<!--	<p><?php the_sub_field('band'); ?></p>-->
 											<!-- </li> -->
+											<?php the_content(); ?>
 											</div>
 										<?php endwhile;?>
 									<!--	</ul> -->
